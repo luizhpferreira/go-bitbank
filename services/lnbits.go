@@ -1,7 +1,8 @@
 package services
 
 import (
-	//"fmt"
+	"fmt"
+
 	"github.com/go-resty/resty/v2"
 )
 
@@ -42,6 +43,7 @@ func CreateWallet(username string) (*LNBitsWallet, error) {
 
 func GenerateInvoice(invoiceKey string, amount int64, memo string) (*InvoiceResponse, error) {
 	client := resty.New()
+	fmt.Println(client)
 
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
