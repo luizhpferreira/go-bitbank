@@ -8,45 +8,42 @@ import (
 )
 
 func CreateUser(c *gin.Context) {
-	var input struct {
-		Username string `json:"username"`
+	var userRequest struct {
+		Username       string `json:"username"`
+		Password       string `json:"password"`
+		PasswordRepeat string `json:"password_repeat"`
 	}
 
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
+	if err := c.ShouldBindJSON(&userRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	wallet, err := services.CreateWallet(input.Username)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create wallet"})
+	if err := services.CreateUser(userRequest.Username, userRequest.Password, userRequest.PasswordRepeat); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"wallet_id":   wallet.ID,
-		"admin_key":   wallet.AdminKey,
-		"invoice_key": wallet.InvoiceKey,
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "User created successfully"})
 }
 
-func GenerateInvoice(c *gin.Context) {
-	var req struct {
-		Amount     int64  `json:"amount"`
-		Memo       string `json:"memo"`
-		InvoiceKey string `json:"invoice_key"`
+func CreateInvoice(c *gin.Context) {
+	var invoiceRequest struct {
+		Out    bool   `json:"out"`
+		Amount int    `json:"amount"`
+		Unit   string `json:"unit"`
+		Memo   string `json:"memo"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Request"})
+	if err := c.ShouldBindJSON(&invoiceRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	invoice, err := services.GenerateInvoice(req.InvoiceKey, req.Amount, req.Memo)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "falied to generate invoince"})
+	if err := services.CreateInvoice(invoiceRequest); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, invoice)
+	c.JSON(http.StatusOK, gin.H{"message": "Invoice created successfully"})
 }

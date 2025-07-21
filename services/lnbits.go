@@ -1,65 +1,86 @@
 package services
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
-
-	"github.com/go-resty/resty/v2"
+	"net/http"
 )
 
 var baseURL = "http://localhost:5000"
 
-type LNBitsWallet struct {
-	ID         string `json:"id"`
-	AdminKey   string `json:"adminkey"`
-	InvoiceKey string `json:"inkey"`
-	Name       string `json:"name"`
-}
+func CreateUser(username, password, passwordRepeat string) error {
 
-type InvoiceResponse struct {
-	PaymentRequest string `json:"payment_request"`
-	PaymentHash    string `json:"payment_hash"`
-	ExpiresAt      int64  `json:"expiry"`
-}
-
-func CreateWallet(username string) (*LNBitsWallet, error) {
-	client := resty.New()
-
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]interface{}{
-			"user_name":   username,
-			"wallet_name": "default",
-		}).
-		SetResult(&LNBitsWallet{}).
-		Post(baseURL + "/wallet")
-
-	if err != nil {
-		return nil, err
+	if password != passwordRepeat {
+		return errors.New("passwords do not match")
 	}
 
-	wallet := resp.Result().(*LNBitsWallet)
-	return wallet, nil
-}
-
-func GenerateInvoice(invoiceKey string, amount int64, memo string) (*InvoiceResponse, error) {
-	client := resty.New()
-	fmt.Println(client)
-
-	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("X-Api-Key", invoiceKey).
-		SetBody(map[string]interface{}{
-			"out":    false,
-			"amount": amount,
-			"memo":   memo,
-			"expiry": 3600,
-		}).
-		SetResult(&InvoiceResponse{}).
-		Post(baseURL + "/api/v1/payments")
-
-	if err != nil {
-		return nil, err
+	userData := map[string]string{
+		"username":        username,
+		"password":        password,
+		"password_repeat": passwordRepeat,
 	}
 
-	return resp.Result().(*InvoiceResponse), nil
+	requestBody, err := json.Marshal(userData)
+	if err != nil {
+		return fmt.Errorf("error marshaling user data: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/users/api/v1/user", baseURL)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return fmt.Errorf("error creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsaHBmIiwiYXV0aF90aW1lIjoxNzUzMTA2MDg1LCJhcGlfdG9rZW5faWQiOiIxN2EwOTZjZTE4NDE0YjEzOGI1NGQ2YmU2MmJhNmQ0NSIsImV4cCI6MTc1NjYwOTE4NX0.yZzqOeqTiMIap5e45l46g9FHHJzFTDqFi8C-VZEY9K0")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error creating user: received status %s", resp.Status)
+	}
+
+	return nil
+}
+
+func CreateInvoice(invoiceData struct {
+	Out    bool   `json:"out"`
+	Amount int    `json:"amount"`
+	Unit   string `json:"unit"`
+	Memo   string `json:"memo"`
+}) error {
+
+	requestBody, err := json.Marshal(invoiceData)
+	if err != nil {
+		return fmt.Errorf("error marshaling invoice data: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/payments", baseURL)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return fmt.Errorf("error creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", "25b4ec3a3c1a40978fcbc11fde123370")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error creating invoice: received status %s", resp.Status)
+	}
+
+	return nil
 }

@@ -9,7 +9,7 @@ func main() {
 	r := gin.Default()
 
 	r.POST("/create-user", handlers.CreateUser)
-	r.POST("/generate-invoice", handlers.GenerateInvoice)
+	r.POST("/create-invoice", handlers.CreateInvoice)
 
 	r.Run(":8081")
 }
